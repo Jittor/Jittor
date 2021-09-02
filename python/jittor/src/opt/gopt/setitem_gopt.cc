@@ -71,8 +71,16 @@ static void setitem_inplace(SetitemOp* op) {
            (!input_op 
             || input_op->inputs().size() == 0))))
         return;
-    if (data->allocator)
-        return;
+    Var* data_target = data;
+    if (data->allocator) {
+        if (data->input()->inputs().size() != 1)
+            return;
+        data_target = data->input()->inputs().front();
+        if (data_target->size != data->size)
+            return;
+        if (data_target->is_finished() || data_target->allocator)
+            return;
+    }
 
     auto in_shape = input->shape;
     int64 inplace_size = 1;
@@ -105,8 +113,8 @@ static void setitem_inplace(SetitemOp* op) {
         // This would lead partial setitem
         return;
     }
-    add_dependency(data->input(), {input->node()});
-    data->share_with(input, size);
+    add_dependency(data_target->input(), {input->node()});
+    data_target->share_with(input, size);
     op->flags.set((NodeFlags::Flags(SetitemOp::_data_inplaced)));
 }
 
